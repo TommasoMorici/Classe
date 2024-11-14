@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro Elettronico Docenti</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffe6e6;
+        }
+        h1, h2, h3, h4 {
+            color: #b30000;
+        }
+        .btn {
+            padding: 8px 12px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #ff3333;
+        }
+        #loginForm, #classListContent, .class-page {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ff6666;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        #classListContent ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .class-container {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid #ff6666;
+            border-radius: 5px;
+            background-color: #ffcccc;
+        }
+        .agenda-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #ff6666;
+            padding: 8px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Registro Elettronico Docenti</h1>
+
+    <!-- Form di Login -->
+    <div id="loginForm">
+        <h2>Accesso Docenti</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Inserisci username">
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Inserisci password">
+        <button class="btn" onclick="login()">Accedi</button>
+        <p id="loginError" style="color: red; display: none;">Credenziali non valide!</p>
+    </div>
+
+    <!-- Sezione lista classi -->
+    <div id="classListContent">
+        <h2>Registro delle Classi</h2>
+        <button class="btn" onclick="addClass()">Aggiungi Classe</button>
+        <ul id="classList"></ul>
+    </div>
+
+    <!-- Pagina dedicata a ciascuna classe -->
+    <div id="classPage" class="class-page">
+        <button class="btn" onclick="backToClassList()">Torna alla Lista Classi</button>
+        <h3 id="classTitle"></h3>
+        <button class="btn" onclick="addStudent()">Aggiungi Alunno</button>
+        <button class="btn" onclick="addAgendaItem()">Aggiungi Argomento e Compito</button>
+        <button class="btn" onclick="markAbsence()">Segna Assenza</button>
+
+        <h4>Elenco Alunni e Assenze:</h4>
+        <ul id="studentList"></ul>
+
+        <h4>Agenda Lezioni e Compiti:</h4>
+        <ul id="agendaList"></ul>
+    </div>
+
+    <script>
+        // Credenziali di accesso
+        const accounts = [
+            { username: "docente", password: "password123" },
+            { username: "tommaso.morici", password: "TTmm24122010!" }
+        ];
+
+        // Variabili globali
+        const classes = JSON.parse(localStorage.getItem("classes")) || [];
+        let currentClassIndex = null;
+
+        document.getElementById('loginForm').style.display = 'block';
+
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const loginError = document.getElementById("loginError");
+
+            const validAccount = accounts.find(account => account.username === username && account.password === password);
+
+            if (validAccount) {
+                document.getElementById("loginForm").style.display = "none";
+                document.getElementById("classListContent").style.display = "block";
+                renderClassList();
+            } else {
+                loginError.style.display = "block";
+            }
+        }
+
+        function addClass() {
+            const className = prompt("Inserisci il nome della classe:");
+            if (className) {
+                const newClass = {
+                    name: className,
+                    students: [],
+                    agenda: []
+                };
+                classes.push(newClass);
+                saveClasses();
+                renderClassList();
+            }
+        }
+
+        function renderClassList() {
+            const classList = document.getElementById("classList");
+            classList.innerHTML = '';
+
+            classes.forEach((classItem, index) => {
+                const listItem = document.createElement("li");
+                listItem.className = "class-container";
+                listItem.innerHTML = `<strong>${classItem.name}</strong>`;
+                listItem.onclick = () => openClassPage(index);
+                classList.appendChild(listItem);
+            });
+        }
+
+        function openClassPage(index) {
+            currentClassIndex = index;
+            const classData = classes[currentClassIndex];
+            document.getElementById("classTitle").textContent = `Classe: ${classData.name}`;
+            document.getElementById("classListContent").style.display = "none";
+            document.getElementById("classPage").style.display = "block";
+
+            renderClassPage();
+        }
+
+        function backToClassList() {
+            document.getElementById("classPage").style.display = "none";
+            document.getElementById("classListContent").style.display = "block";
+        }
+
+        function renderClassPage() {
+            const classData = classes[currentClassIndex];
+
+            // Render alunni
+            document.getElementById("studentList").innerHTML = classData.students.map(student => `<li>${student.name} - Assenze: ${student.absences}</li>`).join('');
+
+            // Render agenda
+            document.getElementById("agendaList").innerHTML = classData.agenda.map(item => 
+                `<li class="agenda-item"><span>Argomento: ${item.topic}</span> <span>Compito: ${item.assignment}</span></li>`
+            ).join('');
+        }
+
+        function addStudent() {
+            const studentName = prompt("Inserisci il nome dell'alunno:");
+            const classData = classes[currentClassIndex];
+
+            if (studentName) {
+                classData.students.push({ name: studentName, absences: 0 });
+                saveClasses();
+                renderClassPage();
+            }
+        }
+
+        function markAbsence() {
+            const studentName = prompt("Inserisci il nome dell'alunno per segnarne l'assenza:");
+            const classData = classes[currentClassIndex];
+            const student = classData.students.find(student => student.name === studentName);
+
+            if (student) {
+                student.absences += 1;
+                saveClasses();
+                renderClassPage();
+            } else {
+                alert("Alunno non trovato!");
+            }
+        }
+
+        function addAgendaItem() {
+            const topic = prompt("Inserisci l'argomento della lezione:");
+            const assignment = prompt("Inserisci il compito assegnato:");
+            const classData = classes[currentClassIndex];
+
+            if (topic && assignment) {
+                // Aggiungi l'argomento e il compito all'agenda
+                classData.agenda.push({ topic: topic, assignment: assignment });
+                saveClasses();
+                renderClassPage();
+            }
+        }
+
+        function saveClasses() {
+            localStorage.setItem("classes", JSON.stringify(classes));
+        }
+    </script>
+
+</body>
+</html> 
